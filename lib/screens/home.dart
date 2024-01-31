@@ -2,14 +2,13 @@
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
-
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-
 import 'package:record/record.dart';
 import 'dart:io';
-
 import 'package:flutter_sound/flutter_sound.dart';
+
+import 'package:flutter_tts/flutter_tts.dart';
 
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
@@ -34,6 +33,8 @@ class _homeState extends State<home> {
   late Record audioRecord;
   late AudioPlayer audioplayer;
   String? audiopath = "";
+  // Inicializa la librería FLUTTER TTS
+  FlutterTts flutterTts = FlutterTts();
 
   // Inicializa la librería Record
 
@@ -144,10 +145,19 @@ class _homeState extends State<home> {
         grabacionPath = audiopath!;
       });
       mensajes.add(_texto);
+      _ReproducirTexto(_texto);
       //playaudio();
     } catch (e) {
       print("error");
     }
+  }
+
+  Future<void> _ReproducirTexto(String texto_a_reproducir) async {
+    await flutterTts.setLanguage("es-ES"); // Establecer el idioma
+    await flutterTts.setPitch(1.0); // Establecer el tono
+    await flutterTts.setSpeechRate(0.5); // Establecer la velocidad
+
+    await flutterTts.speak(texto_a_reproducir);
   }
 
   Future<void> playaudio() async {
