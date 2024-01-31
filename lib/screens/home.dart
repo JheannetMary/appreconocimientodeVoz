@@ -13,32 +13,6 @@ import 'package:flutter_sound/flutter_sound.dart';
 
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
-/*class GrabadoraPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Grabadora de Voz'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton.icon(
-              onPressed: () {
-                // Lógica para manejar la acción del botón
-                print('Botón presionado');
-              },
-              icon: Icon(Icons.mic),
-              label: Text('Iniciar Grabación'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-*/
 class home extends StatefulWidget {
   const home({super.key});
 
@@ -91,18 +65,6 @@ class _homeState extends State<home> {
                 );
               },
             )),
-            /*
-           
-            ElevatedButton.icon(
-              onPressed: () {
-                // Lógica para manejar la acción del botón
-                print('Botón presionado');
-              },
-              icon: Icon(Icons.mic),
-              label: Text('Iniciar Grabación'),
-            ),
-            
-            */
             Text(_textoEscuchado),
             GestureDetector(
               onLongPress: () async {
