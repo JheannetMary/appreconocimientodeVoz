@@ -36,13 +36,13 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
   go_router: ^13.1.0
-  http: ^1.1.0
+  http: ^0.13.3
   just_audio: ^0.9.36
   record: ^4.4.4
   audioplayers: ^5.2.1
-  flutter_sound: ^9.2.13
-  speech_to_text: ^6.2.0
+  speech_to_text: ^6.6.0
   flutter_tts: ^3.8.5
+  dialogflow_flutter: ^1.0.0
 
 dev_dependencies:
   flutter_test:
@@ -60,6 +60,8 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  assets:
+    - assets/pedidos-colchones-e6e6d625f407.json
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

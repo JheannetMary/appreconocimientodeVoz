@@ -1,16 +1,20 @@
 // grabadora_page.dart
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:dialogflow_flutter/googleAuth.dart';
+import 'package:dialogflow_flutter/language.dart';
+
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:record/record.dart';
 import 'dart:io';
-import 'package:flutter_sound/flutter_sound.dart';
 
 import 'package:flutter_tts/flutter_tts.dart';
 
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+
+import 'package:dialogflow_flutter/dialogflowFlutter.dart';
 
 class home extends StatefulWidget {
   const home({super.key});
@@ -24,9 +28,11 @@ class _homeState extends State<home> {
   String _textoEscuchado = 'Presiona y mantén presionado para grabar';
   bool _grabando = false;
   String _texto = "";
+  String _iaresponseAPI = "";
+  bool _available = false;
 
-  late stt.SpeechToText _speech;
-  double _confidence = 1.0;
+  late stt.SpeechToText _speech = stt.SpeechToText();
+  double _confidence = 0;
 
   late String grabacionPath;
 
@@ -37,13 +43,49 @@ class _homeState extends State<home> {
   FlutterTts flutterTts = FlutterTts();
 
   // Inicializa la librería Record
+  void response(query) async {
+    try {
+      AuthGoogle authGoogle = await AuthGoogle(
+              fileJson: "assets/pedidos-colchones-e6e6d625f407.json")
+          .build();
+      DialogFlow dialogflow =
+          DialogFlow(authGoogle: authGoogle, language: Language.spanish);
+      AIResponse aiResponse = await dialogflow.detectIntent(query);
+      setState(() {
+        /* messsages.insert(0, {
+        "data": 0,
+        "message": aiResponse.getListMessage()?[0]["text"]["text"][0].toString()
+      });*/
+        _iaresponseAPI =
+            aiResponse.getListMessage()![0]["text"]["text"][0].toString();
+        mensajes.add(_iaresponseAPI);
+        _ReproducirTexto(_iaresponseAPI);
+      });
+
+      print(aiResponse.getListMessage()?[0]["text"]["text"][0].toString());
+    } catch (e) {
+      print("error");
+      mensajes.add("ha ocurrrido un error!");
+    }
+  }
+
+  Future<void> _initspeach() async {
+    bool available2 = await _speech.initialize(
+      onStatus: (val) => print('onStatus: $val'),
+      onError: (val) => print('onError: $val'),
+    );
+    setState(() {
+      _available = available2;
+    });
+  }
 
   @override
   void initState() {
-    audioplayer = AudioPlayer();
-    audioRecord = Record();
+    // audioplayer = AudioPlayer();
+    //audioRecord = Record();
     super.initState();
-    _speech = stt.SpeechToText();
+    // _speech = stt.SpeechToText();
+    _initspeach();
   }
   // Inicializa la librería Record
 
@@ -51,7 +93,7 @@ class _homeState extends State<home> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Home - Grabadora de Voz'),
+        title: Text('Home - PEDIDOS'),
       ),
       body: Center(
         child: Column(
@@ -109,17 +151,34 @@ class _homeState extends State<home> {
     // Inicia la grabación y obtén la ruta del archivo grabado
     try {
       _texto = "";
-      if (await audioRecord.hasPermission()) {
+      setState(() {
+        _grabando = true;
+      });
+      /*  bool available = await _speech.initialize(
+          onStatus: (val) => print('onStatus: $val'),
+          onError: (val) => print('onError: $val'),
+        );*/
+      if (_available) {
+        _speech.listen(
+          onResult: (val) => setState(() {
+            _texto = val.recognizedWords;
+            if (val.hasConfidenceRating && val.confidence > 0) {
+              _confidence = val.confidence;
+            }
+          }),
+        );
+      }
+      /* if (await audioRecord.hasPermission()) {
         // await audioRecord.start();
 
         setState(() {
           _grabando = true;
         });
-        bool available = await _speech.initialize(
+        /*  bool available = await _speech.initialize(
           onStatus: (val) => print('onStatus: $val'),
           onError: (val) => print('onError: $val'),
-        );
-        if (available) {
+        );*/
+        if (_available) {
           _speech.listen(
             onResult: (val) => setState(() {
               _texto = val.recognizedWords;
@@ -129,7 +188,7 @@ class _homeState extends State<home> {
             }),
           );
         }
-      }
+      }*/
     } catch (e) {
       print("error");
     }
@@ -147,6 +206,10 @@ class _homeState extends State<home> {
       mensajes.add(_texto);
       _ReproducirTexto(_texto);
       //playaudio();
+      _texto == ""
+          ? mensajes.add("habla mas fuerte porfavor!")
+          : response(_texto);
+      print(_texto);
     } catch (e) {
       print("error");
     }
