@@ -1,16 +1,11 @@
 // grabadora_page.dart
-
 import 'package:dialogflow_flutter/googleAuth.dart';
 import 'package:dialogflow_flutter/language.dart';
-
 import 'package:flutter/material.dart';
 
 //import 'package:http/http.dart' as http;
-
 import 'package:flutter_tts/flutter_tts.dart';
-
 import 'package:speech_to_text/speech_to_text.dart';
-
 import 'package:dialogflow_flutter/dialogflowFlutter.dart';
 
 class home extends StatefulWidget {
@@ -223,30 +218,6 @@ class _homeState extends State<home> {
         }),
       );
     }
-    /* if (await audioRecord.hasPermission()) {
-        // await audioRecord.start();
-
-        setState(() {
-          _grabando = true;
-        });
-        /*  bool available = await _speech.initialize(
-          onStatus: (val) => print('onStatus: $val'),
-          onError: (val) => print('onError: $val'),
-        );*/
-        if (_available) {
-          _speech.listen(
-            onResult: (val) => setState(() {
-              texto = val.recognizedWords;
-              if (val.hasConfidenceRating && val.confidence > 0) {
-                _confidence = val.confidence;
-              }
-            }),
-          );
-        }
-      }*/
-    //  } catch (e) {
-    //    print("error");
-    //  }
   }
 
   Future<void> detenerGrabacion() async {
