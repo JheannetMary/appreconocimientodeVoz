@@ -1,48 +1,40 @@
 // grabadora_page.dart
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:dialogflow_flutter/googleAuth.dart';
 import 'package:dialogflow_flutter/language.dart';
 
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:record/record.dart';
-import 'dart:io';
+
+//import 'package:http/http.dart' as http;
 
 import 'package:flutter_tts/flutter_tts.dart';
 
-import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:speech_to_text/speech_to_text.dart';
 
 import 'package:dialogflow_flutter/dialogflowFlutter.dart';
 
 class home extends StatefulWidget {
-  const home({super.key});
+  const home({Key? key}) : super(key: key);
 
   @override
   State<home> createState() => _homeState();
 }
 
 class _homeState extends State<home> {
-  List<String> mensajes = ["hola", "quiero hacer un pedido"];
+  List<String> mensajes = [""];
   String _textoEscuchado = 'Presiona y mantén presionado para grabar';
   bool _grabando = false;
-  String _texto = "";
+  String texto = "";
   String _iaresponseAPI = "";
   bool _available = false;
+  final List<Message> _messages = [];
+  final SpeechToText speech = SpeechToText();
+  double confidence = 0;
+  ScrollController _scrollController = ScrollController();
 
-  late stt.SpeechToText _speech = stt.SpeechToText();
-  double _confidence = 0;
-
-  late String grabacionPath;
-
-  late Record audioRecord;
-  late AudioPlayer audioplayer;
-  String? audiopath = "";
   // Inicializa la librería FLUTTER TTS
   FlutterTts flutterTts = FlutterTts();
-
-  // Inicializa la librería Record
+  TextEditingController _textController = TextEditingController();
   void response(query) async {
     try {
       AuthGoogle authGoogle = await AuthGoogle(
@@ -56,10 +48,36 @@ class _homeState extends State<home> {
         "data": 0,
         "message": aiResponse.getListMessage()?[0]["text"]["text"][0].toString()
       });*/
+        List<dynamic> messages = aiResponse.getListMessage()!;
+
+        for (var messageia in messages) {
+          if (messageia.containsKey('text') &&
+              messageia["text"]["text"][0].toString() != "") {
+            print(messageia["text"]["text"][0].toString());
+            Message newMessage = Message(
+                content: messageia["text"]["text"][0].toString(),
+                sender: 'Dialog flow');
+            setState(() {
+              _messages.add(newMessage);
+            });
+          }
+        }
+
         _iaresponseAPI =
             aiResponse.getListMessage()![0]["text"]["text"][0].toString();
-        mensajes.add(_iaresponseAPI);
+        //   mensajes.add(_iaresponseAPI);
+        Message newMessage =
+            Message(content: _iaresponseAPI, sender: 'Dialog flow');
+        setState(() {
+          //  _messages.add(newMessage);
+        });
+
         _ReproducirTexto(_iaresponseAPI);
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
       });
 
       print(aiResponse.getListMessage()?[0]["text"]["text"][0].toString());
@@ -70,7 +88,7 @@ class _homeState extends State<home> {
   }
 
   Future<void> _initspeach() async {
-    bool available2 = await _speech.initialize(
+    bool available2 = await speech.initialize(
       onStatus: (val) => print('onStatus: $val'),
       onError: (val) => print('onError: $val'),
     );
@@ -81,13 +99,10 @@ class _homeState extends State<home> {
 
   @override
   void initState() {
-    // audioplayer = AudioPlayer();
-    //audioRecord = Record();
     super.initState();
     // _speech = stt.SpeechToText();
     _initspeach();
   }
-  // Inicializa la librería Record
 
   @override
   Widget build(BuildContext context) {
@@ -101,13 +116,17 @@ class _homeState extends State<home> {
           children: [
             Expanded(
                 child: ListView.builder(
-              itemCount: mensajes.length,
+              controller: _scrollController,
+              itemCount: _messages.length,
               itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(mensajes[index]),
-                );
+                //   return ListTile(
+                //   title: Text(mensajes[index]),
+
+                // );
+                return ChatBubble(message: _messages[index]);
               },
             )),
+
             Text(_textoEscuchado),
             GestureDetector(
               onLongPress: () async {
@@ -122,7 +141,6 @@ class _homeState extends State<home> {
                 setState(() {
                   _textoEscuchado = 'Reconociendo...';
                 });
-                await Future.delayed(Duration(seconds: 2));
 
                 setState(() {
                   _textoEscuchado = 'Presiona y mantén presionado para grabar';
@@ -141,6 +159,41 @@ class _homeState extends State<home> {
                 ),
               ),
             ),
+
+            TextField(
+              controller: _textController,
+              decoration: InputDecoration(
+                labelText: 'Ingrese su texto',
+              ),
+            ),
+            SizedBox(height: 16.0),
+            // Botón que realiza una acción con el texto ingresado
+            TextButton(
+              onPressed: () async {
+                setState(() {
+                  mensajes.add(_textController.text);
+                });
+                response(_textController.text);
+
+                Message newMessage =
+                    Message(content: _textController.text, sender: 'User');
+                setState(() {
+                  _messages.add(newMessage);
+                });
+
+                _textController.clear();
+              },
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.blue, // Color de fondo del botón
+                primary: Colors.white, // Color del texto del botón
+                padding: EdgeInsets.all(16.0), // Relleno del botón
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(8.0), // Bordes redondeados
+                ),
+              ),
+              child: Text('Enviar Texto'),
+            ),
           ],
         ),
       ),
@@ -149,26 +202,28 @@ class _homeState extends State<home> {
 
   Future<void> iniciarGrabacion() async {
     // Inicia la grabación y obtén la ruta del archivo grabado
-    try {
-      _texto = "";
-      setState(() {
-        _grabando = true;
-      });
-      /*  bool available = await _speech.initialize(
+    //try {
+    texto = "";
+    setState(() {
+      _grabando = true;
+    });
+    /*  bool available = await _speech.initialize(
           onStatus: (val) => print('onStatus: $val'),
           onError: (val) => print('onError: $val'),
         );*/
-      if (_available) {
-        _speech.listen(
-          onResult: (val) => setState(() {
-            _texto = val.recognizedWords;
-            if (val.hasConfidenceRating && val.confidence > 0) {
-              _confidence = val.confidence;
-            }
-          }),
-        );
-      }
-      /* if (await audioRecord.hasPermission()) {
+
+    if (_available) {
+      print('escucha');
+      speech.listen(
+        onResult: (val) => setState(() {
+          texto = val.recognizedWords;
+          if (val.hasConfidenceRating && val.confidence > 0) {
+            confidence = val.confidence;
+          }
+        }),
+      );
+    }
+    /* if (await audioRecord.hasPermission()) {
         // await audioRecord.start();
 
         setState(() {
@@ -181,7 +236,7 @@ class _homeState extends State<home> {
         if (_available) {
           _speech.listen(
             onResult: (val) => setState(() {
-              _texto = val.recognizedWords;
+              texto = val.recognizedWords;
               if (val.hasConfidenceRating && val.confidence > 0) {
                 _confidence = val.confidence;
               }
@@ -189,27 +244,30 @@ class _homeState extends State<home> {
           );
         }
       }*/
-    } catch (e) {
-      print("error");
-    }
+    //  } catch (e) {
+    //    print("error");
+    //  }
   }
 
   Future<void> detenerGrabacion() async {
     // Inicia la grabación y obtén la ruta del archivo grabado
     try {
       //  String? audiopath = await audioRecord.stop();
-      _speech.stop();
+      speech.stop();
       setState(() {
         _grabando = false;
-        grabacionPath = audiopath!;
       });
-      mensajes.add(_texto);
-      _ReproducirTexto(_texto);
+      // mensajes.add(texto);
+      Message newMessage = Message(content: texto, sender: 'User');
+      setState(() {
+        _messages.add(newMessage);
+      });
+      //_ReproducirTexto(texto);
       //playaudio();
-      _texto == ""
+      texto == ""
           ? mensajes.add("habla mas fuerte porfavor!")
-          : response(_texto);
-      print(_texto);
+          : response(texto);
+      print(texto);
     } catch (e) {
       print("error");
     }
@@ -222,103 +280,67 @@ class _homeState extends State<home> {
 
     await flutterTts.speak(texto_a_reproducir);
   }
+}
 
-  Future<void> playaudio() async {
-    // Inicia la grabación y obtén la ruta del archivo grabado
-    try {
-      Source urlsource = UrlSource(grabacionPath);
-      await audioplayer.play(urlsource);
-    } catch (e) {
-      print("error");
-    }
-  }
+class Message {
+  String content;
+  String sender;
 
-  Future<List<int>> leerArchivoComoBytes(String filePath) async {
-    File file = File(filePath);
-    return await file.readAsBytes();
-  }
+  Message({required this.content, required this.sender});
+}
 
-  Future<List<int>> _getAudioContent() async {
-    // Asegúrate de que el archivo M4A esté presente en la ruta adecuada
-    final path = grabacionPath;
+class ChatBubble extends StatefulWidget {
+  final Message message;
 
-    try {
-      // Lee el contenido del archivo M4A como bytes
-      List<int> audioBytes = await File(path).readAsBytes();
-      return audioBytes;
-    } catch (e) {
-      print('Error al leer el archivo M4A: $e');
-      return <int>[]; // o maneja el error de la manera que desees
-    }
-  }
+  const ChatBubble({Key? key, required this.message}) : super(key: key);
 
-  Future<void> reconocerVoz() async {
-    if (grabacionPath != null && grabacionPath != "") {
-      print("se obtuvo el audio");
-      // Lee el archivo grabado como bytes
+  @override
+  _ChatBubbleState createState() => _ChatBubbleState();
+}
 
-      //   List<int> audioBytes = await leerArchivoComoBytes(grabacionPath);
+class _ChatBubbleState extends State<ChatBubble> {
+  bool _isExpanded = false;
 
-      List<int> audioBytes = await _getAudioContent();
-
-      // Llama a la función que maneja los bytes del audio
-      String response = await reconocerVozApi(audioBytes);
-      print(response);
-    } else {
-      print('No hay grabación para procesar.');
-    }
-  }
-
-  Future<String> reconocerVozApi(List<int> audioBytes) async {
-    // Define la URL de la API de Speech-to-Text
-    const url =
-        'https://speech.googleapis.com/v1/speech:recognize?key=AIzaSyBOanzfn8rDLStsBP3agkhHyUbxTTJvq3g';
-
-    // Reemplaza 'TU_CLAVE_DE_API' con tu clave de API real
-
-    // Construye la estructura de la solicitud JSON
-    // 'encoding': 'LINEAR16',
-    //     'sampleRateHertz': 16000,
-    //     'languageCode': 'es-ES', // Cambia según el idioma que desees
-
-    final requestBody = {
-      'config': {
-        'encoding': 'FLAC',
-        'sampleRateHertz': 44100,
-        'languageCode': 'es-ES'
-      },
-      'audio': {
-        'uri': "https://storage.googleapis.com/proyreconocimiento/Voz-002.flac"
-      },
-    };
-
-    // Realiza la solicitud HTTP POST a la API de Speech-to-Text
-    final response = await http.post(
-      Uri.parse(url),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(requestBody),
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        mainAxisAlignment: widget.message.sender == 'User'
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color:
+                  widget.message.sender == 'User' ? Colors.blue : Colors.grey,
+              borderRadius: BorderRadius.circular(10.0),
+            ),
+            padding: EdgeInsets.all(10.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.message.sender,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 5.0),
+                Container(
+                  width: 200.0, // Ajusta según tus necesidades
+                  child: Text(
+                    widget.message.content,
+                    style: TextStyle(color: Colors.white),
+                    softWrap: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
-    print(response.body);
-
-    // Maneja la respuesta de la API
-    if (response.statusCode == 200) {
-      // Procesa y extrae el texto reconocido de la respuesta
-
-      print(response.body);
-
-      final Map<String, dynamic> responseData = jsonDecode(response.body);
-      final List<dynamic> results = responseData['results'];
-      if (results.isNotEmpty) {
-        final String transcription =
-            results.first['alternatives'].first['transcript'];
-        print(transcription);
-        return transcription;
-      } else {
-        return 'No se encontraron resultados de reconocimiento.';
-      }
-    } else {
-      // Maneja errores en la respuesta de la API
-      return 'Error en la solicitud a la API: ${response.statusCode}';
-    }
   }
 }
